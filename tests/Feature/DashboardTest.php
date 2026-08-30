@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Expense;
+use App\Models\RecurringExpense;
+use App\Models\RecurringExpenseOccurrence;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -66,5 +68,26 @@ class DashboardTest extends TestCase
         $response->assertSee('Gasto Pago Teste');
         $response->assertSee('Gasto Pendente Teste');
         $response->assertDontSee('9.999,00');
+    }
+
+    public function test_dashboard_renders_with_recurring_expenses_and_occurrences(): void
+    {
+        $user = User::factory()->create();
+        $category = Category::where('user_id', $user->id)->first();
+
+        // Recorrente ativo com ocorrência no mês
+        $recurring = RecurringExpense::factory()->create([
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'description' => 'Condomínio Solar',
+            'expected_amount' => 600.00,
+            'due_date' => Carbon::now()->startOfMonth()->addDays(10)->toDateString(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('Condomínio Solar');
+        $response->assertSee('600,00');
     }
 }

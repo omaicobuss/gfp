@@ -12,6 +12,9 @@
                 <a href="{{ route('categories.index') }}" class="inline-flex items-center px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 shadow-sm transition">
                     🏷️ Categorias
                 </a>
+                <a href="{{ route('recurring-expenses.create') }}" class="inline-flex items-center px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 shadow-sm transition">
+                    🔄 Novo Recorrente
+                </a>
                 <a href="{{ route('expenses.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-lg font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 shadow-sm transition">
                     ➕ Novo Gasto
                 </a>
@@ -102,7 +105,7 @@
                             <table class="w-full text-left border-collapse">
                                 <thead>
                                     <tr class="border-b border-gray-100 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-                                        <th class="py-2.5 px-3">Data</th>
+                                        <th class="py-2.5 px-3">Data / Venc.</th>
                                         <th class="py-2.5 px-3">Descrição</th>
                                         <th class="py-2.5 px-3">Categoria</th>
                                         <th class="py-2.5 px-3 text-right">Valor</th>
@@ -111,16 +114,24 @@
                                 </thead>
                                 <tbody class="divide-y divide-gray-50 text-sm">
                                     @foreach ($recentExpenses as $expense)
+                                        @php
+                                            $itemDate = $expense->item_date ?? $expense->date ?? $expense->due_date ?? null;
+                                        @endphp
                                         <tr class="hover:bg-gray-50/75 transition">
                                             <td class="py-3 px-3 text-xs text-gray-500 whitespace-nowrap">
-                                                {{ $expense->date->format('d/m/Y') }}
+                                                {{ $itemDate ? $itemDate->format('d/m/Y') : '—' }}
                                             </td>
                                             <td class="py-3 px-3 font-medium text-gray-900">
-                                                {{ $expense->description }}
+                                                <div class="flex items-center space-x-1.5">
+                                                    @if(($expense->item_type ?? '') === 'recurring')
+                                                        <span class="text-[10px] px-1.5 py-0.2 bg-purple-100 text-purple-700 rounded font-semibold">Recorrente</span>
+                                                    @endif
+                                                    <span>{{ $expense->description }}</span>
+                                                </div>
                                             </td>
                                             <td class="py-3 px-3">
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700">
-                                                    {{ $expense->category->name }}
+                                                    {{ $expense->category->name ?? 'Geral' }}
                                                 </span>
                                             </td>
                                             <td class="py-3 px-3 text-right font-semibold text-gray-900 whitespace-nowrap">
