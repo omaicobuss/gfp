@@ -5,7 +5,7 @@
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                     {{ $recurringExpense->description }}
                 </h2>
-                <p class="text-xs text-gray-500 mt-1">Detalhes do modelo de gasto recorrente</p>
+                <p class="text-xs text-gray-500 mt-1">Detalhes do modelo de gasto recorrente e histórico de vencimentos</p>
             </div>
 
             <div class="flex items-center space-x-3">
@@ -115,6 +115,118 @@
                     @endif
                 </div>
 
+            </div>
+
+            <!-- Histórico de Vencimentos e Ocorrências (FR-017, FR-020) -->
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <h3 class="text-base font-bold text-gray-900 flex items-center">
+                            <span class="p-1.5 bg-indigo-50 text-indigo-600 rounded-md mr-2 text-sm">📅</span>
+                            Vencimentos e Ocorrências Geradas
+                        </h3>
+                        <p class="text-xs text-gray-500 mt-0.5">Histórico de faturas geradas e registro de pagamentos realizados</p>
+                    </div>
+
+                    <form action="{{ route('recurring-expenses.generate', $recurringExpense) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold transition">
+                            🔄 Gerar Próximos Vencimentos
+                        </button>
+                    </form>
+                </div>
+
+                @if ($recurringExpense->occurrences->isEmpty())
+                    <div class="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                        <p class="text-sm text-gray-500">Nenhuma ocorrência gerada ainda.</p>
+                    </div>
+                @else
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50/50">
+                                    <th class="py-3 px-4">Vencimento</th>
+                                    <th class="py-3 px-4 text-right">Valor Esperado</th>
+                                    <th class="py-3 px-4 text-right">Valor Pago</th>
+                                    <th class="py-3 px-4 text-center">Status</th>
+                                    <th class="py-3 px-4 text-center">Comprovante</th>
+                                    <th class="py-3 px-4 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 text-sm">
+                                @foreach ($recurringExpense->occurrences as $occ)
+                                    <tr class="hover:bg-gray-50/75 transition">
+                                        <!-- Vencimento -->
+                                        <td class="py-3.5 px-4 font-medium text-gray-900 whitespace-nowrap">
+                                            {{ $occ->due_date->format('d/m/Y') }}
+                                            @if ($occ->paid_at)
+                                                <div class="text-[11px] text-green-600">Pago em {{ $occ->paid_at->format('d/m/Y') }}</div>
+                                            @endif
+                                        </td>
+
+                                        <!-- Valor Esperado -->
+                                        <td class="py-3.5 px-4 text-right text-gray-600 whitespace-nowrap">
+                                            {{ $occ->formatted_expected_amount }}
+                                        </td>
+
+                                        <!-- Valor Pago -->
+                                        <td class="py-3.5 px-4 text-right font-bold text-gray-900 whitespace-nowrap">
+                                            {{ $occ->formatted_actual_amount ?? '—' }}
+                                        </td>
+
+                                        <!-- Status -->
+                                        <td class="py-3.5 px-4 text-center whitespace-nowrap">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border {{ $occ->status_badge_class }}">
+                                                {{ $occ->status_label }}
+                                            </span>
+                                        </td>
+
+                                        <!-- Comprovante Anexo (FR-018) -->
+                                        <td class="py-3.5 px-4 text-center whitespace-nowrap">
+                                            @if ($occ->paymentReceipt)
+                                                <a href="{{ route('attachments.download', $occ->paymentReceipt) }}" class="inline-flex items-center px-2 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded text-xs font-semibold transition" title="Baixar comprovante">
+                                                    🧾 Recibo
+                                                </a>
+                                            @else
+                                                <span class="text-xs text-gray-400 italic">—</span>
+                                            @endif
+                                        </td>
+
+                                        <!-- Ações -->
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                                            <div class="inline-flex items-center space-x-1">
+                                                @if (! $occ->is_paid)
+                                                    <a href="{{ route('occurrences.pay', $occ) }}" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-semibold shadow-sm transition">
+                                                        Pagar
+                                                    </a>
+                                                @else
+                                                    <form method="POST" action="{{ route('occurrences.unpay', $occ) }}" onsubmit="return confirm('Deseja desmarcar o pagamento desta ocorrência?');">
+                                                        @csrf
+                                                        <button type="submit" class="px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs font-medium transition" title="Desmarcar pagamento">
+                                                            Desmarcar
+                                                        </button>
+                                                    </form>
+                                                @endif
+
+                                                <a href="{{ route('occurrences.edit', $occ) }}" class="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition" title="Editar ocorrência">
+                                                    ✏️
+                                                </a>
+
+                                                <form action="{{ route('occurrences.destroy', $occ) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir esta ocorrência?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition" title="Excluir ocorrência">
+                                                        🗑️
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             </div>
 
         </div>

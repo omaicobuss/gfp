@@ -6,38 +6,98 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ExpenseRequest;
 use App\Models\Category;
 use App\Models\Expense;
+use App\Models\RecurringExpenseOccurrence;
 use App\Services\ExpenseStatusService;
+use App\Services\RecurringExpenseService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class ExpenseController extends Controller
 {
     /**
-     * Display a listing of the user's expenses with filters and summaries (FR-029, FR-030).
+     * Display a consolidated listing of user's expenses (non-recurring + recurring occurrences) (FR-029, FR-030).
      */
     public function index(Request $request): View
     {
         $userId = Auth::id();
 
-        $query = Expense::with('category')
-            ->forUser($userId)
-            ->byPeriod($request->input('start_date'), $request->input('end_date'))
-            ->byCategory($request->filled('category_id') ? (int) $request->input('category_id') : null)
-            ->byStatus($request->input('status'))
-            ->search($request->input('search'))
-            ->orderByDesc('date')
-            ->orderByDesc('id');
+        // Garante que as ocorrências ativas estejam geradas para o período
+        RecurringExpenseService::generateAllForUser($userId);
 
-        // Totais consolidados para os cards de resumo
-        $totalAmount = (clone $query)->sum('amount');
-        $paidAmount = (clone $query)->where('status', 'paid')->sum('amount');
-        $pendingAmount = (clone $query)->where('status', 'pending')->sum('amount');
-        $overdueAmount = (clone $query)->where('status', 'overdue')->sum('amount');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $categoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
+        $status = $request->input('status');
+        $type = $request->input('type', 'all'); // 'all', 'single', 'recurring'
+        $search = $request->input('search');
 
-        $expenses = $query->paginate(15)->withQueryString();
+        $items = collect();
+
+        // 1. Gastos Não Recorrentes (Avulsos)
+        if ($type === 'all' || $type === 'single') {
+            $singleExpenses = Expense::with(['category'])
+                ->forUser($userId)
+                ->byPeriod($startDate, $endDate)
+                ->byCategory($categoryId)
+                ->byStatus($status)
+                ->search($search)
+                ->get()
+                ->map(function ($item) {
+                    $item->item_type = 'single';
+                    $item->item_date = $item->date;
+                    $item->is_recurring = false;
+                    return $item;
+                });
+
+            $items = $items->concat($singleExpenses);
+        }
+
+        // 2. Ocorrências de Gastos Recorrentes
+        if ($type === 'all' || $type === 'recurring') {
+            $occurrences = RecurringExpenseOccurrence::with(['category', 'recurringExpense.billingDocument', 'paymentReceipt'])
+                ->forUser($userId)
+                ->byPeriod($startDate, $endDate)
+                ->byCategory($categoryId)
+                ->byStatus($status)
+                ->search($search)
+                ->get()
+                ->map(function ($item) {
+                    $item->item_type = 'recurring';
+                    $item->item_date = $item->due_date;
+                    $item->is_recurring = true;
+                    return $item;
+                });
+
+            $items = $items->concat($occurrences);
+        }
+
+        // Ordenação por data decrescente
+        $sorted = $items->sortByDesc(function ($item) {
+            return $item->item_date->format('Y-m-d') . '_' . $item->id;
+        })->values();
+
+        // Totais consolidados
+        $totalAmount = $sorted->sum(fn ($i) => (float) $i->amount);
+        $paidAmount = $sorted->where('status', 'paid')->sum(fn ($i) => (float) $i->amount);
+        $pendingAmount = $sorted->where('status', 'pending')->sum(fn ($i) => (float) $i->amount);
+        $overdueAmount = $sorted->where('status', 'overdue')->sum(fn ($i) => (float) $i->amount);
+
+        // Paginação manual do Collection consolidado
+        $perPage = 15;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $currentItems = $sorted->slice(($currentPage - 1) * $perPage, $perPage)->all();
+
+        $expenses = new LengthAwarePaginator(
+            $currentItems,
+            $sorted->count(),
+            $perPage,
+            $currentPage,
+            ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => $request->query()]
+        );
 
         $categories = Category::forUser($userId)->orderBy('name')->get();
 

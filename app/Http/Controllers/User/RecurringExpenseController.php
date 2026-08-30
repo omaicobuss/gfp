@@ -7,6 +7,7 @@ use App\Http\Requests\RecurringExpenseRequest;
 use App\Models\Category;
 use App\Models\RecurringExpense;
 use App\Services\AttachmentService;
+use App\Services\RecurringExpenseService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -99,6 +100,9 @@ class RecurringExpenseController extends Controller
             );
         }
 
+        // Gera automaticamente as primeiras ocorrências deste gasto recorrente (FR-015)
+        RecurringExpenseService::generateOccurrences($recurringExpense);
+
         return redirect()->route('recurring-expenses.index')->with('status', 'Gasto recorrente cadastrado com sucesso!');
     }
 
@@ -111,7 +115,14 @@ class RecurringExpenseController extends Controller
             abort(403, 'Acesso não autorizado a este gasto recorrente.');
         }
 
-        $recurringExpense->load(['category', 'billingDocument']);
+        // Carrega ocorrências e documentos
+        $recurringExpense->load([
+            'category',
+            'billingDocument',
+            'occurrences' => function ($q) {
+                $q->with('paymentReceipt')->orderByDesc('due_date');
+            },
+        ]);
 
         return view('recurring-expenses.show', compact('recurringExpense'));
     }
@@ -198,5 +209,23 @@ class RecurringExpenseController extends Controller
             'status',
             "O gasto recorrente '{$recurringExpense->description}' foi {$status}."
         );
+    }
+
+    /**
+     * Manually trigger generation of future occurrences.
+     */
+    public function generateOccurrences(RecurringExpense $recurringExpense): RedirectResponse
+    {
+        if ($recurringExpense->user_id !== Auth::id()) {
+            abort(403, 'Acesso não autorizado.');
+        }
+
+        $created = RecurringExpenseService::generateOccurrences($recurringExpense, now()->addMonths(6));
+
+        $msg = $created > 0
+            ? "{$created} novas ocorrências de vencimento foram geradas."
+            : 'Todas as ocorrências do período já estavam geradas.';
+
+        return back()->with('status', $msg);
     }
 }

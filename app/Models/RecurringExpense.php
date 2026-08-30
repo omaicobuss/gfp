@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
@@ -62,6 +63,14 @@ class RecurringExpense extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Generated payment occurrences for this recurring expense.
+     */
+    public function occurrences(): HasMany
+    {
+        return $this->hasMany(RecurringExpenseOccurrence::class);
     }
 
     /**
@@ -173,13 +182,17 @@ class RecurringExpense extends Model
     }
 
     /**
-     * Delete attachments when recurring expense is deleted.
+     * Delete attachments and occurrences when recurring expense is deleted.
      */
     protected static function booted(): void
     {
         static::deleting(function (RecurringExpense $recurringExpense) {
             foreach ($recurringExpense->attachments as $attachment) {
                 $attachment->delete();
+            }
+
+            foreach ($recurringExpense->occurrences as $occurrence) {
+                $occurrence->delete();
             }
         });
     }

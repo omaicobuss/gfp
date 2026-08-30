@@ -7,6 +7,7 @@ use App\Http\Controllers\User\CategoryController;
 use App\Http\Controllers\User\DashboardController;
 use App\Http\Controllers\User\ExpenseController;
 use App\Http\Controllers\User\RecurringExpenseController;
+use App\Http\Controllers\User\RecurringExpenseOccurrenceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -25,13 +26,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Gastos Não Recorrentes (US3, US6)
+    // Gastos Não Recorrentes e Listagem Consolidada (US3, US6)
     Route::resource('expenses', ExpenseController::class)->except(['show']);
 
     // Gastos Recorrentes (US4)
+    Route::post('recurring-expenses/{recurring_expense}/generate', [RecurringExpenseController::class, 'generateOccurrences'])
+        ->name('recurring-expenses.generate');
     Route::patch('recurring-expenses/{recurring_expense}/toggle-active', [RecurringExpenseController::class, 'toggleActive'])
         ->name('recurring-expenses.toggle-active');
     Route::resource('recurring-expenses', RecurringExpenseController::class);
+
+    // Ocorrências de Pagamento de Recorrentes (US5)
+    Route::get('occurrences/{occurrence}/pay', [RecurringExpenseOccurrenceController::class, 'payForm'])
+        ->name('occurrences.pay');
+    Route::post('occurrences/{occurrence}/pay', [RecurringExpenseOccurrenceController::class, 'pay'])
+        ->name('occurrences.pay.store');
+    Route::post('occurrences/{occurrence}/unpay', [RecurringExpenseOccurrenceController::class, 'unpay'])
+        ->name('occurrences.unpay');
+    Route::get('occurrences/{occurrence}/edit', [RecurringExpenseOccurrenceController::class, 'edit'])
+        ->name('occurrences.edit');
+    Route::put('occurrences/{occurrence}', [RecurringExpenseOccurrenceController::class, 'update'])
+        ->name('occurrences.update');
+    Route::delete('occurrences/{occurrence}', [RecurringExpenseOccurrenceController::class, 'destroy'])
+        ->name('occurrences.destroy');
 
     // Anexos (Documentos e Comprovantes) (FR-016, FR-018, FR-024)
     Route::get('attachments/{attachment}/download', [AttachmentController::class, 'download'])
