@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\User\AttachmentController;
 use App\Http\Controllers\User\CategoryController;
 use App\Http\Controllers\User\DashboardController;
 use App\Http\Controllers\User\ExpenseController;
+use App\Http\Controllers\User\RecurringExpenseController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -25,6 +27,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Gastos Não Recorrentes (US3, US6)
     Route::resource('expenses', ExpenseController::class)->except(['show']);
+
+    // Gastos Recorrentes (US4)
+    Route::patch('recurring-expenses/{recurring_expense}/toggle-active', [RecurringExpenseController::class, 'toggleActive'])
+        ->name('recurring-expenses.toggle-active');
+    Route::resource('recurring-expenses', RecurringExpenseController::class);
+
+    // Anexos (Documentos e Comprovantes) (FR-016, FR-018, FR-024)
+    Route::get('attachments/{attachment}/download', [AttachmentController::class, 'download'])
+        ->name('attachments.download');
+    Route::delete('attachments/{attachment}', [AttachmentController::class, 'destroy'])
+        ->name('attachments.destroy');
 
     // Categorias Próprias (US7)
     Route::resource('categories', CategoryController::class)->except(['create', 'show', 'edit']);

@@ -18,7 +18,11 @@
                     </x-nav-link>
 
                     <x-nav-link :href="route('expenses.index')" :active="request()->routeIs('expenses.*')">
-                        Gastos
+                        Gastos Avulsos
+                    </x-nav-link>
+
+                    <x-nav-link :href="route('recurring-expenses.index')" :active="request()->routeIs('recurring-expenses.*')">
+                        Gastos Recorrentes
                     </x-nav-link>
 
                     <x-nav-link :href="route('categories.index')" :active="request()->routeIs('categories.*')">
@@ -91,7 +95,11 @@
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('expenses.index')" :active="request()->routeIs('expenses.*')">
-                Gastos
+                Gastos Avulsos
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('recurring-expenses.index')" :active="request()->routeIs('recurring-expenses.*')">
+                Gastos Recorrentes
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('categories.index')" :active="request()->routeIs('categories.*')">
