@@ -3,15 +3,18 @@
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\User\CategoryController;
+use App\Http\Controllers\User\DashboardController;
+use App\Http\Controllers\User\ExpenseController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Dashboard
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 // Rotas do Usuário Autenticado e Verificado
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -19,6 +22,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Gastos Não Recorrentes (US3, US6)
+    Route::resource('expenses', ExpenseController::class)->except(['show']);
 
     // Categorias Próprias (US7)
     Route::resource('categories', CategoryController::class)->except(['create', 'show', 'edit']);
