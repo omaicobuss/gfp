@@ -16,6 +16,16 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         Painel
                     </x-nav-link>
+
+                    <x-nav-link :href="route('categories.index')" :active="request()->routeIs('categories.*')">
+                        Categorias
+                    </x-nav-link>
+
+                    @if(Auth::user()->isAdmin())
+                        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                            👥 Gestão de Usuários
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -27,7 +37,7 @@
                             <div>{{ Auth::user()->name }}</div>
 
                             @if(Auth::user()->isAdmin())
-                                <span class="ms-2 px-2 py-0.5 text-xs font-semibold bg-indigo-100 text-indigo-700 rounded-full">Admin</span>
+                                <span class="ms-2 px-2 py-0.5 text-[10px] font-semibold bg-indigo-100 text-indigo-700 rounded-full">Admin</span>
                             @endif
 
                             <div class="ms-1">
@@ -75,6 +85,16 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 Painel
             </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('categories.index')" :active="request()->routeIs('categories.*')">
+                Categorias
+            </x-responsive-nav-link>
+
+            @if(Auth::user()->isAdmin())
+                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
+                    👥 Gestão de Usuários
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->
