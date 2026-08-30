@@ -33,15 +33,23 @@ Route::middleware('guest')->group(function () {
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
+
+    Route::get('resend-verification', [EmailVerificationNotificationController::class, 'create'])
+        ->name('verification.resend.form');
+
+    Route::post('resend-verification', [EmailVerificationNotificationController::class, 'resend'])
+        ->middleware('throttle:6,1')
+        ->name('verification.resend');
 });
+
+// Verification URL can be accessed by both guest and auth users via signed link
+Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify');
 
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
-
-    Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
-        ->middleware(['signed', 'throttle:6,1'])
-        ->name('verification.verify');
 
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
         ->middleware('throttle:6,1')

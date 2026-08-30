@@ -1,12 +1,12 @@
 <x-guest-layout>
     <div class="mb-4 text-sm text-gray-600">
-        Esqueceu sua senha? Sem problemas. Informe seu endereço de e-mail e nós lhe enviaremos um link para você redefinir sua senha com segurança.
+        Não recebeu o link de ativação da sua conta ou ele expirou? Informe seu e-mail abaixo para enviarmos um novo link de confirmação.
     </div>
 
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
-    <form method="POST" action="{{ route('password.email') }}">
+    <form method="POST" action="{{ route('verification.resend') }}">
         @csrf
 
         <!-- Email Address -->
@@ -22,7 +22,7 @@
             </a>
 
             <x-primary-button class="ms-3">
-                Enviar Link de Redefinição
+                Reenviar E-mail
             </x-primary-button>
         </div>
     </form>

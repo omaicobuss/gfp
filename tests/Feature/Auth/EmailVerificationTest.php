@@ -22,7 +22,7 @@ class EmailVerificationTest extends TestCase
         $response->assertStatus(200);
     }
 
-    public function test_email_can_be_verified(): void
+    public function test_email_can_be_verified_via_signed_url_as_guest(): void
     {
         $user = User::factory()->unverified()->create();
 
@@ -34,11 +34,12 @@ class EmailVerificationTest extends TestCase
             ['id' => $user->id, 'hash' => sha1($user->email)]
         );
 
-        $response = $this->actingAs($user)->get($verificationUrl);
+        $response = $this->get($verificationUrl);
 
         Event::assertDispatched(Verified::class);
         $this->assertTrue($user->fresh()->hasVerifiedEmail());
-        $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('status');
     }
 
     public function test_email_is_not_verified_with_invalid_hash(): void
@@ -51,8 +52,29 @@ class EmailVerificationTest extends TestCase
             ['id' => $user->id, 'hash' => sha1('wrong-email')]
         );
 
-        $this->actingAs($user)->get($verificationUrl);
+        $response = $this->get($verificationUrl);
 
         $this->assertFalse($user->fresh()->hasVerifiedEmail());
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('error');
+    }
+
+    public function test_resend_verification_form_can_be_rendered(): void
+    {
+        $response = $this->get('/resend-verification');
+
+        $response->assertStatus(200);
+    }
+
+    public function test_guest_can_request_resending_verification_email(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $response = $this->post('/resend-verification', [
+            'email' => $user->email,
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('status');
     }
 }
